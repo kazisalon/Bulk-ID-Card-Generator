@@ -66,9 +66,47 @@
         .btn-primary {
             background: linear-gradient(45deg, #007bff, #0056b3);
             border: none;
-            padding: 10px 25px;
-            border-radius: 8px;
-            transition: all 0.3s;
+            padding: 12px 30px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .btn-primary:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(45deg, #0056b3, #004094);
+            transition: all 0.3s ease;
+            z-index: -1;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        }
+        
+        .btn-primary:hover:before {
+            width: 100%;
+        }
+        
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+        }
+        
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .btn-primary:hover {
@@ -154,7 +192,13 @@
                         </select>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary">Generate ID Cards</button>
+                    <!-- Update the button in the form -->
+                    <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center gap-2 w-100">
+                        <span>Generate ID Cards</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                        </svg>
+                    </button>
                 </form>
             </div>
         </div>
