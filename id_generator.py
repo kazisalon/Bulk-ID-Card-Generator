@@ -31,10 +31,15 @@ class IDCardGeneratorGUI:
         self.font_path = tk.StringVar()
         self.font_size = tk.StringVar(value="20")
         
+        # Template customization options
+        self.photo_frame_style = tk.StringVar(value="circle")
+        self.font_color = tk.StringVar(value="black")
+        self.border_size = tk.StringVar(value="2")  # Default border size of 2 pixels
+        
         # Initialize preview variables
         self.preview_image = None
         self.current_coordinate = None
-        self.coordinate_labels = ["Photo", "QR Code", "Name", "Class", "Contact", "Address", "Guardian", "Validity", "Roll No."]
+        self.coordinate_labels = ["Photo", "QR Code", "Name", "Class", "Contact", "Address", "Guardian", "Validity", "Roll No.", "RegNo"]
         self.current_label_index = 0
         self.coordinates = {}
         self.scale_factor = 1.0
@@ -239,22 +244,63 @@ class IDCardGeneratorGUI:
         ttk.Entry(font_section, textvariable=self.font_path, style='Dark.TEntry').grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 10))
         ttk.Button(font_section, text="Browse", command=lambda: self.browse_file(self.font_path, [("Font files", "*.ttf;*.otf")]), style='Dark.TButton').grid(row=0, column=2)
         
-        # Font size
-        font_size_frame = ttk.Frame(font_section, style='Dark.TFrame')
-        font_size_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=8)
-        ttk.Label(font_size_frame, text="Font Size:", style='Dark.TLabel').grid(row=0, column=0, sticky=tk.W)
-        font_size_entry = ttk.Entry(font_size_frame, textvariable=self.font_size, style='Dark.TEntry', width=10)
-        font_size_entry.grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
+        # Font sizes for different fields
+        self.font_sizes = {}
+        for i, label in enumerate(self.coordinate_labels):
+            if label not in ['Photo', 'QR Code']:  # Skip non-text elements
+                ttk.Label(font_section, text=f"{label} Font Size:", style='Dark.TLabel').grid(row=i+1, column=0, sticky=tk.W, pady=5)
+                size_var = tk.StringVar(value="20")  # Default size
+                self.font_sizes[label] = size_var
+                size_entry = ttk.Entry(font_section, textvariable=size_var, width=8, style='Dark.TEntry')
+                size_entry.grid(row=i+1, column=1, sticky=tk.W, padx=(10, 0))
+        
+        # Template Customization Section
+        template_section = ttk.LabelFrame(left_frame, text="Template Customization", style='Dark.TLabelframe', padding="15")
+        template_section.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 15))
+        template_section.columnconfigure(1, weight=1)
+        
+        # Photo Frame Style
+        ttk.Label(template_section, text="Photo Frame Style:", style='Dark.TLabel').grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Radiobutton(template_section, text="Circle", variable=self.photo_frame_style, value="circle",
+                       style='Dark.TRadiobutton').grid(row=0, column=1, sticky=tk.W, padx=5)
+        ttk.Radiobutton(template_section, text="Square", variable=self.photo_frame_style, value="square",
+                       style='Dark.TRadiobutton').grid(row=0, column=2, sticky=tk.W, padx=5)
+        
+        # Border Size
+        ttk.Label(template_section, text="Border Size (px):", style='Dark.TLabel').grid(row=1, column=0, sticky=tk.W, pady=5)
+        border_size_entry = ttk.Entry(template_section, textvariable=self.border_size, width=8, style='Dark.TEntry')
+        border_size_entry.grid(row=1, column=1, sticky=tk.W, padx=5)
+        
+        # Font Color Selection
+        ttk.Label(template_section, text="Font Color:", style='Dark.TLabel').grid(row=2, column=0, sticky=tk.W, pady=5)
+        color_options = ["black", "blue", "red", "green", "#235cca"]  # Added #0080c2
+        color_dropdown = ttk.Combobox(template_section, textvariable=self.font_color, values=color_options, state="readonly")
+        color_dropdown.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), padx=5)
+        
+        # Border Color Selection
+        self.border_color = tk.StringVar(value="blue") # Default to blue border
+        ttk.Label(template_section, text="Border Color:", style='Dark.TLabel').grid(row=3, column=0, sticky=tk.W, pady=5)
+        border_color_options = ["black", "blue", "red", "green", "white", "#235cca"]
+        border_color_dropdown = ttk.Combobox(template_section, textvariable=self.border_color, values=border_color_options, state="readonly")
+        border_color_dropdown.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), padx=5)
+        
+        # Configure style for combobox
+        style = ttk.Style()
+        style.configure('TCombobox',
+                      fieldbackground=self.colors['bg_tertiary'],
+                      background=self.colors['bg_secondary'],
+                      foreground=self.colors['fg_primary'])
+        color_dropdown.configure(style='TCombobox')
         
         # Generate Button
         generate_frame = ttk.Frame(left_frame, style='Dark.TFrame')
-        generate_frame.grid(row=2, column=0, columnspan=3, pady=20)
+        generate_frame.grid(row=4, column=0, columnspan=3, pady=20)
         ttk.Button(generate_frame, text="🚀 Generate ID Cards", command=self.generate_cards, 
                   style='Success.TButton', width=25).pack()
         
         # Log Section
         log_section = ttk.LabelFrame(left_frame, text="Generation Log", style='Dark.TLabelframe', padding="15")
-        log_section.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 0))
+        log_section.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 0))
         log_section.columnconfigure(0, weight=1)
         log_section.rowconfigure(0, weight=1)
         
@@ -268,7 +314,7 @@ class IDCardGeneratorGUI:
         self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Configure left frame row weights
-        left_frame.rowconfigure(3, weight=1)
+        left_frame.rowconfigure(6, weight=1)
         
         return left_frame
         
@@ -803,17 +849,20 @@ class IDCardGeneratorGUI:
                 output_folder=self.output_folder.get(),
                 coordinates=self.coordinates,
                 log_callback=self.log_message,
-                export_as_pdf_var=self.export_as_pdf
+                export_as_pdf_var=self.export_as_pdf,
+                photo_frame_style=self.photo_frame_style.get(),
+                font_color=self.font_color.get(),
+                border_size=int(self.border_size.get()),
+                border_color=self.border_color.get()
             )
             
             # Set custom font if provided
             if self.font_path.get():
                 try:
-                    font_size = int(self.font_size.get())
-                    generator.set_font(self.font_path.get(), font_size)
-                except ValueError:
-                    self.log_message("⚠️ Invalid font size. Using default size (20).")
-                    generator.set_font(self.font_path.get())
+                    # Pass font sizes dictionary to the generator
+                    generator.set_font(self.font_path.get(), self.font_sizes)
+                except Exception as e:
+                    self.log_message(f"⚠️ Error setting font: {str(e)}")
             
             # Generate cards
             generator.generate_all_id_cards()
@@ -828,7 +877,7 @@ class IDCardGeneratorGUI:
             self.log_message(f"❌ {error_msg}")
 
 class IDCardGenerator:
-    def __init__(self, template_path, photos_folder, qr_folder, excel_path, output_folder, coordinates=None, photo_size=(230, 230), qr_size=(120, 120), log_callback=None, export_as_pdf_var=None):
+    def __init__(self, template_path, photos_folder, qr_folder, excel_path, output_folder, coordinates=None, photo_size=(230, 230), qr_size=(120, 120), log_callback=None, export_as_pdf_var=None, photo_frame_style="circle", font_color="black", border_size=2, border_color="blue"):
         """
         Initialize the ID Card Generator.
         
@@ -842,6 +891,10 @@ class IDCardGenerator:
             photo_size (tuple): Size of the photo (width, height)
             qr_size (tuple): Size of the QR code (width, height)
             log_callback (callable): Function to call for logging messages
+            photo_frame_style (str): Style of photo frame ("circle" or "square")
+            font_color (str): Color of the text
+            border_size (int): Size of the photo border in pixels
+            border_color (str): Color of the photo border
         """
         self.template_path = template_path
         self.photos_folder = photos_folder
@@ -850,6 +903,10 @@ class IDCardGenerator:
         self.output_folder = output_folder
         self.log_callback = log_callback or (lambda x: None)
         self.export_as_pdf_var = export_as_pdf_var
+        self.photo_frame_style = photo_frame_style
+        self.font_color = font_color
+        self.border_size = border_size
+        self.border_color = border_color
         
         # Create output folder if it doesn't exist
         os.makedirs(output_folder, exist_ok=True)
@@ -873,12 +930,15 @@ class IDCardGenerator:
                 self.qr_coordinates = coordinates['QR Code']
             
             # Set text coordinates
-            for key in ['Name', 'Class', 'Contact', 'Address', 'Guardian', 'Validity', 'Roll No.']:
+            for key in ['Name', 'Class', 'Contact', 'Address', 'Guardian', 'Validity', 'Roll No.', 'RegNo']:
                 if key in coordinates:
                     self.text_coordinates[key] = coordinates[key]
 
         # Mapping from card labels to Excel column names (case-insensitive matching will be used)
         # Map the label on the card to the likely column name in your Excel file.
+        # Note: The keys in this dictionary are the labels shown on the card/GUI,
+        # and the values are the corresponding column names in the Excel file.
+        # For fields like Roll No. and RegNo, we provide a list of possible column names to handle variations.
         self.label_to_excel_column_map = {
             'Name': 'Name',
             'Class': 'Grade', # Map Class label on card to Grade column in Excel
@@ -886,29 +946,40 @@ class IDCardGenerator:
             'Address': 'Address',
             'Guardian': 'Guardian',
             'Validity': 'Validity',
-            'Roll No.': 'Roll No.' # Map Roll No. label to 'Roll No.' column (adjust if your Excel differs)
+            'Roll No.': ['Roll No.', 'Roll No', 'RollNo', 'Roll Number', 'RollNumber'], # Multiple possible column names for Roll No.
+            'RegNo': ['RegNo', 'Reg No', 'Reg-No', 'Registration No', 'RegistrationNo'] # Added multiple possible column names for RegNo
         }
         
         # Initialize font variables
         self.font_path = None
-        self.font_size = 20
-        self.font = ImageFont.load_default()
+        self.fonts = {}  # Dictionary to store fonts for different fields
+        self.default_font = ImageFont.load_default()
 
-    def set_font(self, font_path, font_size=20):
-        """Set a custom font for text rendering.
+    def set_font(self, font_path, font_sizes):
+        """Set custom fonts for different text fields.
 
         Args:
             font_path (str): Path to the .ttf or .otf font file
-            font_size (int): Font size to use (default: 20)
+            font_sizes (dict): Dictionary mapping field names to font sizes
         """
         try:
-            self.font = ImageFont.truetype(font_path, font_size)
             self.font_path = font_path
-            self.font_size = font_size
-            self.log_callback(f"✅ Successfully loaded font: {os.path.basename(font_path)} with size {font_size}")
+            # Create font objects for each field with their respective sizes
+            for field, size_var in font_sizes.items():
+                try:
+                    size = int(size_var.get())
+                    self.fonts[field] = ImageFont.truetype(font_path, size)
+                    self.log_callback(f"✅ Set font size {size} for {field}")
+                except ValueError:
+                    self.log_callback(f"⚠️ Invalid font size for {field}, using default size")
+                    self.fonts[field] = ImageFont.truetype(font_path, 20)
         except Exception as e:
             self.log_callback(f"⚠️ Error loading font {font_path}: {str(e)}. Using default font.")
-            self.font = ImageFont.load_default()
+            self.fonts = {field: self.default_font for field in font_sizes.keys()}
+
+    def get_font_for_field(self, field):
+        """Get the appropriate font for a given field."""
+        return self.fonts.get(field, self.default_font)
 
     def create_circular_mask(self, image):
         """Create a circular mask for the photo."""
@@ -918,23 +989,59 @@ class IDCardGenerator:
         return mask
 
     def process_photo(self, photo_path):
-        """Process a photo by resizing it and creating a circular mask."""
+        """Process a photo by resizing it and applying the selected frame style."""
         try:
             # Open and resize the photo
             photo = Image.open(photo_path)
             photo = photo.resize(self.photo_size, Image.Resampling.LANCZOS)
             
-            # Create a circular mask
-            mask = Image.new('L', self.photo_size, 0)
-            draw = ImageDraw.Draw(mask)
-            draw.ellipse((0, 0) + self.photo_size, fill=255)
-            
-            # Apply the mask
-            output = Image.new('RGBA', self.photo_size, (0, 0, 0, 0))
-            output.paste(photo, (0, 0))
-            output.putalpha(mask)
-            
-            return output
+            if self.photo_frame_style == "circle":
+                # Create a circular mask with border
+                mask = Image.new('L', self.photo_size, 0)
+                draw = ImageDraw.Draw(mask)
+                
+                # Draw the main circle
+                draw.ellipse((0, 0) + self.photo_size, fill=255)
+                
+                # Create border mask
+                border_mask = Image.new('L', self.photo_size, 0)
+                border_draw = ImageDraw.Draw(border_mask)
+                
+                # Draw border circle
+                border_draw.ellipse((0, 0) + self.photo_size, outline=self.border_color, width=self.border_size)
+                
+                # Combine masks
+                final_mask = Image.new('L', self.photo_size, 0)
+                final_mask.paste(mask, (0, 0), mask)
+                final_mask.paste(border_mask, (0, 0), border_mask)
+                
+                # Apply the mask
+                output = Image.new('RGBA', self.photo_size, (0, 0, 0, 0))
+                output.paste(photo, (0, 0))
+                output.putalpha(final_mask)
+                
+                return output
+            else:
+                # For square photos, add a border
+                if self.border_size > 0:
+                    # Create a new image with border
+                    bordered = Image.new('RGBA', self.photo_size, (0, 0, 0, 0))
+                    # Create a drawing object for the border
+                    border_draw = ImageDraw.Draw(bordered)
+                    # Draw the rectangle border
+                    border_draw.rectangle((0, 0) + self.photo_size, outline=self.border_color, width=self.border_size)
+                    
+                    # Calculate inner size
+                    inner_size = (self.photo_size[0] - 2 * self.border_size, 
+                                self.photo_size[1] - 2 * self.border_size)
+                    # Resize photo to fit inside border
+                    inner_photo = photo.resize(inner_size, Image.Resampling.LANCZOS)
+                    # Paste photo in center
+                    paste_x = (self.photo_size[0] - inner_size[0]) // 2
+                    paste_y = (self.photo_size[1] - inner_size[1]) // 2
+                    bordered.paste(inner_photo, (paste_x, paste_y))
+                    return bordered
+                return photo
         except Exception as e:
             self.log_callback(f"⚠️ Error processing photo {os.path.basename(photo_path)}: {str(e)}")
             return None
@@ -986,6 +1093,7 @@ class IDCardGenerator:
             # Create a copy of the template
             id_card = self.template.copy()
             
+            photo_added = False
             # Process and paste the photo
             if photo_path and os.path.exists(photo_path):
                 photo = self.process_photo(photo_path)
@@ -993,18 +1101,25 @@ class IDCardGenerator:
                     # Calculate center-aligned coordinates for photo
                     photo_x = self.photo_coordinates[0] - (self.photo_size[0] // 2)
                     photo_y = self.photo_coordinates[1] - (self.photo_size[1] // 2)
-                    id_card.paste(photo, (photo_x, photo_y), photo)
+                    id_card.paste(photo, (photo_x, photo_y), photo) # Use photo with alpha channel for pasting
                     self.log_callback(f"  ✅ Photo added for {student_id}")
+                    photo_added = True
             else:
                 self.log_callback(f"  ⚠️ Photo not found for student {student_id}")
             
+            qr_added = False
             # Look for and paste QR code
             ext_id = student_data.get(ext_id_key, 'Unknown')
             qr_path = None
-            for filename in os.listdir(self.qr_folder):
-                if ext_id.lower() in filename.lower() and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                    qr_path = os.path.join(self.qr_folder, filename)
-                    break
+            # Search for QR code file case-insensitively in the specified folder
+            if os.path.exists(self.qr_folder):
+                for filename in os.listdir(self.qr_folder):
+                    if ext_id.lower() in filename.lower() and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                        qr_path = os.path.join(self.qr_folder, filename)
+                        break
+            else:
+                 self.log_callback(f"  ⚠️ QR Codes Folder not found: {self.qr_folder}")
+
             
             if qr_path and os.path.exists(qr_path):
                 qr_image = self.process_qr_code(qr_path)
@@ -1012,102 +1127,180 @@ class IDCardGenerator:
                     # Calculate center-aligned coordinates for QR code
                     qr_x = self.qr_coordinates[0] - (self.qr_size[0] // 2)
                     qr_y = self.qr_coordinates[1] - (self.qr_size[1] // 2)
-                    id_card.paste(qr_image, (qr_x, qr_y))
+                    id_card.paste(qr_image, (qr_x, qr_y)) # QR images are typically RGB/L, no mask needed
                     self.log_callback(f"  ✅ QR code added for {student_id}")
+                    qr_added = True
             else:
                 self.log_callback(f"  ⚠️ QR code not found for student {student_id}")
             
             # Add text information
             draw = ImageDraw.Draw(id_card)
-            # Calculate line height from first two coordinates if available
-            sorted_coords = sorted(self.text_coordinates.items(), key=lambda x: x[1][1])  # Sort by y-coordinate
-            base_y = None
-            line_height = None
-            if len(sorted_coords) >= 2:
-                _, (_, y1) = sorted_coords[0]
-                _, (_, y2) = sorted_coords[1]
-                base_y = y1
-                line_height = y2 - y1
-
-            # Draw text at exact clicked coordinates
-            text_added_count = 0
-            for idx, (field, (x, y)) in enumerate(sorted_coords):
-                actual_excel_key_in_dict = self.label_to_excel_column_map.get(field)
-                if actual_excel_key_in_dict and student_data.get(actual_excel_key_in_dict) is not None:
-                    # Special handling for Validity date to remove time
-                    if field == 'Validity':
-                        try:
-                            # Convert to datetime if it's not already
-                            if isinstance(student_data.get(actual_excel_key_in_dict), str):
-                                date_value = pd.to_datetime(student_data.get(actual_excel_key_in_dict))
-                            else:
-                                date_value = student_data.get(actual_excel_key_in_dict)
-                            text_data = date_value.strftime('%Y-%m-%d')
-                        except:
-                            # If date conversion fails, use the original value
-                            text_data = str(student_data.get(actual_excel_key_in_dict))
-                    else:
-                        text_data = str(student_data.get(actual_excel_key_in_dict))
-                    bbox = draw.textbbox((0, 0), text_data, font=self.font)
-                    
-                    # For left alignment, use the x coordinate directly
-                    adjusted_x = x
-                    
-                    # Use the provided y coordinate directly for vertical positioning (top-left alignment)
-                    adjusted_y = y
-
-                    draw.text((adjusted_x, adjusted_y), text_data, fill='black', font=self.font)
-                    text_added_count += 1
             
-            # Return the generated image object instead of saving
-            return id_card
+            # Sort coordinates by y-axis to process text fields roughly top-to-bottom
+            sorted_coords = sorted(self.text_coordinates.items(), key=lambda item: item[1][1])
+
+            text_added_count = 0
+            # Draw text for each defined coordinate label
+            for field, (x, y) in sorted_coords:
+                try:
+                    # Check if a coordinate is set for this field label
+                    if field not in self.text_coordinates:
+                        # This case should ideally be caught before generation, but adding a check here for robustness
+                        self.log_callback(f"  ⚠️ Coordinate not set for field '{field}', skipping text placement.")
+                        continue
+                        
+                    # Find the actual column name in the Excel file corresponding to the card label
+                    excel_column_key = self.label_to_excel_column_map.get(field)
+
+                    # Handle cases where the mapping value is a list of possible column names
+                    if isinstance(excel_column_key, list):
+                        found_key = None
+                        for possible_key in excel_column_key:
+                            # Check if the possible column name exists in the student_data dictionary (from the Excel row)
+                            if possible_key in student_data and pd.notna(student_data[possible_key]):
+                                found_key = possible_key
+                                break # Found a valid column name, no need to check others
+                        actual_excel_key_in_dict = found_key
+                    else:
+                        # If the mapping value is not a list, use it directly as the column name
+                        actual_excel_key_in_dict = excel_column_key
+                    
+                    # If the column name was found and exists in the student data
+                    if actual_excel_key_in_dict and actual_excel_key_in_dict in student_data and pd.notna(student_data[actual_excel_key_in_dict]):
+                        value = student_data[actual_excel_key_in_dict]
+                        
+                        # Special handling for Validity date to format it
+                        if field == 'Validity':
+                            try:
+                                # Attempt to parse and format date, handle different input types
+                                if isinstance(value, str):
+                                    date_value = pd.to_datetime(value)
+                                elif isinstance(value, pd.Timestamp):
+                                     date_value = value
+                                else:
+                                    raise ValueError("Value is not a string or Timestamp") # Indicate failure for other types
+                                text_data = date_value.strftime('%Y-%m-%d') # Format date as YYYY-MM-DD
+                            except Exception as date_error:
+                                # If date conversion/formatting fails, use the original value as string and log warning
+                                text_data = str(value)
+                                self.log_callback(f"  ⚠️ Could not format Validity date for {student_id}: {date_error}. Using original value.")
+                        else:
+                            # For other fields, convert the value to a string
+                            text_data = str(value)
+                        
+                        # Get font color from instance variable, defaulting to black if not set or invalid
+                        try:
+                            font_color = self.font_color.get() if hasattr(self.font_color, 'get') else (self.font_color if self.font_color else 'black')
+                            # Basic validation for color string (optional, but good practice)
+                            if not isinstance(font_color, str) or not font_color: raise ValueError
+                        except Exception as color_error:
+                            font_color = 'black' # Fallback to black on error
+                            self.log_callback(f"  ⚠️ Error getting font color: {color_error}. Using default black.")
+
+                        # Get the appropriate font for this field
+                        field_font = self.get_font_for_field(field)
+                        
+                        # Draw the text on the card with the field-specific font
+                        draw.text((x, y), text_data, fill=font_color, font=field_font)
+                        text_added_count += 1
+                        self.log_callback(f"  ✅ Added text for '{field}': '{text_data}'")
+                    else:
+                        # Log if the column wasn't found in data or had no valid value
+                        col_name = excel_column_key if isinstance(excel_column_key, str) else ", ".join(excel_column_key)
+                        self.log_callback(f"  ⚠️ No data found for field '{field}' (looked for column(s): {col_name}), skipping text placement.")
+
+                except Exception as e:
+                    self.log_callback(f"  ❌ Error processing field '{field}' for student {student_id}: {str(e)}")
+                    continue
+
+            # Check if at least one element (text, photo, or QR) was successfully added to the card
+            if text_added_count > 0 or photo_added or qr_added:
+                self.log_callback(f"  ✅ Card generated for {student_id} with {text_added_count} text fields, Photo added: {photo_added}, QR added: {qr_added}")
+                return id_card
+            else:
+                # If nothing could be added to the card, return None
+                self.log_callback(f"  ❌ No data could be added to the card for student {student_id}. Skipping card generation.")
+                return None
 
         except Exception as e:
+            # Catch any critical errors during the processing of a single student's card
             student_id_for_log = student_data.get(ext_id_key, 'Unknown ID')
-            self.log_callback(f"  ❌ Error generating ID card for {student_id_for_log}: {str(e)}")
-            return None # Return None if there was an error
+            self.log_callback(f"  ❌ Critical error generating ID card for {student_id_for_log}: {str(e)}")
+            return None # Return None if a critical error occurred
 
     def generate_all_id_cards(self):
         """Generate ID cards for all students."""
         try:
+            if not os.path.exists(self.excel_path):
+                raise FileNotFoundError(f"Excel file not found: {self.excel_path}")
+                
             self.log_callback(f"📖 Reading Excel file: {os.path.basename(self.excel_path)}")
             # Read student data from Excel
             df = pd.read_excel(self.excel_path)
+            
+            if df.empty:
+                raise ValueError("Excel file is empty")
+                
             total_students = len(df)
             self.log_callback(f"📊 Found {total_students} students in Excel file")
+            
+            # Log available columns for debugging
+            self.log_callback(f"📋 Available columns: {', '.join(df.columns)}")
+            
+            # Log missing columns as warnings
+            for field, required_cols in self.label_to_excel_column_map.items():
+                if isinstance(required_cols, list):
+                    if not any(col in df.columns for col in required_cols):
+                        self.log_callback(f"⚠️ Optional field {field} not found (tried: {', '.join(required_cols)}) in Excel columns.")
+                elif required_cols not in df.columns:
+                    self.log_callback(f"⚠️ Optional field '{required_cols}' not found in Excel columns.")
+
             
             successful_cards = 0
             failed_cards = 0
             
             generated_images = [] # List to store generated images for PDF export
 
-            # Process each student
-            for index, row in df.iterrows():
-                try:
+            try:
+                # Process each student
+                for index, row in df.iterrows():
+                    self.log_callback(f"\n--- Processing Row {index + 1} ---")
                     student_data = row.to_dict()
+                    self.log_callback(f"Raw row data: {student_data}")
 
                     # Find the actual dictionary key for 'ext_id' case-insensitively
                     ext_id_key_in_dict = None
                     for key in student_data.keys():
-                        if key.lower() == 'ext_id':
+                        if key.lower() in ['ext_id', 'ext-id', 'extid', 'id']:
                             ext_id_key_in_dict = key
                             break
 
                     # If the key is not found in any case, or if the value is empty, skip the row
-                    if not ext_id_key_in_dict or not student_data.get(ext_id_key_in_dict):
-                        self.log_callback(f"⚠️ Row {index + 1}: 'EXT_ID' not found or empty. Skipping.")
+                    if not ext_id_key_in_dict or pd.isna(student_data.get(ext_id_key_in_dict)):
+                        self.log_callback(f"⚠️ Row {index + 1}: 'EXT_ID' not found or is empty. Skipping row.")
                         failed_cards += 1
                         continue
 
                     # Get the ext_id value using the discovered key
-                    ext_id = student_data[ext_id_key_in_dict]
+                    ext_id = str(student_data[ext_id_key_in_dict]) # Ensure ext_id is a string for comparison
+                    self.log_callback(f"Found EXT_ID: {ext_id} (using key '{ext_id_key_in_dict}')")
 
                     # Look for matching photo by checking if ext_id is in the filename
                     photo_path = None
-                    for filename in os.listdir(self.photos_folder):
-                        if ext_id.lower() in filename.lower() and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                            photo_path = os.path.join(self.photos_folder, filename)
-                            break
+                    # Search for photo file case-insensitively in the specified folder
+                    if os.path.exists(self.photos_folder):
+                         for filename in os.listdir(self.photos_folder):
+                             # Check if ext_id (as string) is a substring of the lowercased filename
+                             if ext_id.lower() in filename.lower() and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                                 photo_path = os.path.join(self.photos_folder, filename)
+                                 break # Found a match, no need to check other files
+                    else:
+                        self.log_callback(f"  ⚠️ Photos Folder not found: {self.photos_folder}. No photo search performed.")
+
+                    if photo_path:
+                        self.log_callback(f"Found photo file: {os.path.basename(photo_path)}")
+                    else:
+                        self.log_callback(f"  ⚠️ No photo found for EXT_ID: {ext_id} in {self.photos_folder}")
 
                     # Pass the student_data and the discovered ext_id_key to generate_id_card
                     generated_card_image = self.generate_id_card(student_data, photo_path, ext_id_key_in_dict)
@@ -1117,19 +1310,16 @@ class IDCardGenerator:
                         self.log_callback(f"  ✅ Generated image for {ext_id} (added to PDF list)")
                         successful_cards += 1
                     else:
-                        # If generate_id_card returned None (due to error)
+                        # If generate_id_card returned None (due to error or no data added)
+                        self.log_callback(f"  ❌ Failed to generate card for {ext_id} (generate_id_card returned None)")
                         failed_cards += 1
 
-                except KeyError as e:
-                    # This specific error handler will catch the 'ext_id' KeyError
-                    self.log_callback(f"❌ Row {index + 1}: Missing key {e}. Available keys: {list(student_data.keys())}")
-                    failed_cards += 1
-                    continue # Skip this row and continue with the next
-                except Exception as e:
-                    # Catch any other unexpected errors during row processing
-                    self.log_callback(f"❌ Row {index + 1}: Error processing - {str(e)}")
-                    failed_cards += 1
-                    continue # Skip this row and continue with the next
+            except KeyboardInterrupt:
+                self.log_callback("\n⚠️ ID card generation was interrupted by user.")
+                messagebox.showwarning("Generation Interrupted", 
+                                     f"ID card generation was interrupted.\n\nProgress:\n• {successful_cards} cards generated\n• {failed_cards} failed")
+                # Continue to final summary and PDF saving based on images collected so far
+                pass # Allow execution to continue to the final summary and PDF save
 
             # Final summary
             self.log_callback(f"\n🎯 Generation Summary:")
@@ -1137,12 +1327,18 @@ class IDCardGenerator:
             self.log_callback(f"  • Successful cards: {successful_cards}")
             self.log_callback(f"  • Failed cards: {failed_cards}")
 
-            # Save as PDF
+            # Save as PDF if any images were generated or partially generated before interruption
             if generated_images:
+                # Ensure output folder exists
+                os.makedirs(self.output_folder, exist_ok=True)
+                
                 pdf_output_path = os.path.join(self.output_folder, "all_id_cards.pdf")
                 try:
+                    # Convert images to RGB mode before saving as PDF
+                    rgb_images = [img.convert('RGB') for img in generated_images]
+                    
                     # Save the first image, then append the rest
-                    generated_images[0].save(pdf_output_path, save_all=True, append_images=generated_images[1:], format='PDF')
+                    rgb_images[0].save(pdf_output_path, save_all=True, append_images=rgb_images[1:], format='PDF')
                     self.log_callback(f"🎉 Successfully saved all ID cards to: {os.path.basename(pdf_output_path)}")
                 except Exception as e:
                     self.log_callback(f"❌ Error saving PDF: {str(e)}")
@@ -1150,10 +1346,15 @@ class IDCardGenerator:
             else:
                 self.log_callback("⚠️ No cards generated to save as PDF.")
 
+        except FileNotFoundError as e:
+            self.log_callback(f"❌ File not found error: {str(e)}")
+            messagebox.showerror("File Not Found Error", f"Error: {str(e)}")
+        except ValueError as e:
+             self.log_callback(f"❌ Data error: {str(e)}")
+             messagebox.showerror("Data Error", f"Error: {str(e)}")
         except Exception as e:
-            self.log_callback(f"❌ Critical error in bulk generation: {str(e)}")
+            self.log_callback(f"❌ Critical error during bulk generation: {str(e)}")
             messagebox.showerror("Generation Error", f"Critical error during generation: {str(e)}")
-            # No need to re-raise, let the GUI handle the error display
 
 def main():
     root = tk.Tk()
