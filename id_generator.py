@@ -231,7 +231,7 @@ class IDCardGeneratorGUI:
         ttk.Button(file_section, text="Browse", command=lambda: self.browse_folder(self.output_folder), style='Dark.TButton').grid(row=4, column=2)
         
         # PDF Export Option
-        pdf_export_checkbox = ttk.Checkbutton(file_section, text="Export as single PDF", variable=self.export_as_pdf, style='Dark.TLabel') # Using Dark.TLabel style for text color
+        pdf_export_checkbox = ttk.Checkbutton(file_section, text="Export as single PDF (A4 Landscape)", variable=self.export_as_pdf, style='Dark.TLabel') # Using Dark.TLabel style for text color
         pdf_export_checkbox.grid(row=5, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
         
         # Font Configuration Section
@@ -1327,24 +1327,125 @@ class IDCardGenerator:
             self.log_callback(f"  • Successful cards: {successful_cards}")
             self.log_callback(f"  • Failed cards: {failed_cards}")
 
-            # Save as PDF if any images were generated or partially generated before interruption
-            if generated_images:
+            # --- PDF Export Logic ---
+            if generated_images and self.export_as_pdf_var.get():
+                self.log_callback("✅ 'Export as single PDF (A4 Landscape)' is checked. Preparing PDF...")
                 # Ensure output folder exists
                 os.makedirs(self.output_folder, exist_ok=True)
-                
+
                 pdf_output_path = os.path.join(self.output_folder, "all_id_cards.pdf")
+                self.log_callback(f"📦 Arranging {len(generated_images)} cards onto A4 pages for PDF export...")
+
+                a4_images = [] # List to store the final A4 pages
+
+                # Define A4 dimensions in pixels at 300 DPI (approx 3508x2480 portrait, so 2480x3508 landscape)
+                # Using common A4 aspect ratio scaled for reasonable pixel dimensions
+                a4_width_px = 3508 # Landscape width at 300 DPI (approx 11.69 inches * 300 DPI)
+                a4_height_px = 2480 # Landscape height at 300 DPI (approx 8.27 inches * 300 DPI)
+                a4_size = (a4_width_px, a4_height_px)
+
+                self.log_callback(f"📏 A4 Landscape size (px): {a4_size}")
+
+                # Define grid layout (5 columns, 2 rows) based on user's example image
+                num_cols = 5
+                num_rows = 2
+                cards_per_page = num_cols * num_rows
+
+                # Calculate space for each card, including padding
+                card_slot_width = a4_width_px // num_cols
+                card_slot_height = a4_height_px // num_rows
+
+                self.log_callback(f"📐 Card slot size (px): ({card_slot_width}, {card_slot_height}) for {num_cols}x{num_rows} grid")
+                
+                # Define padding around each card within its slot
+                card_padding_px = 30 # Adjust this value to control the gap
+                self.log_callback(f"Padding around each card (px): {card_padding_px}")
+
+                # Process images in batches of cards_per_page
+                for i in range(0, len(generated_images), cards_per_page):
+                    self.log_callback(f"📄 Creating A4 page {len(a4_images) + 1} for batch starting at index {i}")
+                    a4_page = Image.new('RGB', a4_size, (255, 255, 255)) # Create a blank white A4 landscape page
+                    draw = ImageDraw.Draw(a4_page)
+
+                    # Optional: Draw faint guide lines for debugging layout
+                    # for col in range(num_cols + 1): draw.line([(col*card_slot_width, 0), (col*card_slot_width, a4_height_px)], fill=(200,200,200), width=1)
+                    # for row in range(num_rows + 1): draw.line([(0, row*card_slot_height), (a4_width_px, row*card_slot_height)], fill=(200,200,200), width=1)
+
+                    batch = generated_images[i : i + cards_per_page]
+
+                    for j, card_img in enumerate(batch):
+                        col_index = j % num_cols
+                        row_index = j // num_cols
+
+                        # Calculate the top-left position of the current slot
+                        slot_x = col_index * card_slot_width
+                        slot_y = row_index * card_slot_height
+                        
+                        self.log_callback(f"    🖼️ Processing card {j+1} in batch, slot ({col_index}, {row_index}) at position ({slot_x}, {slot_y})")
+
+                        # Resize card image to fit within the slot while maintaining aspect ratio
+                        # Calculate the maximum possible dimensions for the card while fitting within the slot, considering padding
+                        max_card_width = card_slot_width - 2 * card_padding_px
+                        max_card_height = card_slot_height - 2 * card_padding_px
+                        
+                        self.log_callback(f"    📦 Max card size within padding (px): ({max_card_width}, {max_card_height})")
+
+                        # Get original card image size
+                        original_card_width, original_card_height = card_img.size
+                        self.log_callback(f"    📏 Original card size (px): ({original_card_width}, {original_card_height})")
+
+                        # Calculate scaling factor to fit within the slot
+                        width_scale = max_card_width / original_card_width
+                        height_scale = max_card_height / original_card_height
+
+                        # Use the minimum scale factor to maintain aspect ratio
+                        scale_factor = min(width_scale, height_scale)
+                        self.log_callback(f"    🔎 Scaling factor: {scale_factor:.4f}")
+
+                        # Calculate the new size for the card image
+                        new_card_width = int(original_card_width * scale_factor)
+                        new_card_height = int(original_card_height * scale_factor)
+                        self.log_callback(f"    ✨ Resized card size (px): ({new_card_width}, {new_card_height})")
+
+                        # Resize the card image using LANCZOS for quality
+                        resized_card = card_img.resize((new_card_width, new_card_height), Image.Resampling.LANCZOS)
+
+                        # Calculate the paste position to center the resized card within its slot
+                        paste_x = slot_x + (card_slot_width - new_card_width) // 2
+                        paste_y = slot_y + (card_slot_height - new_card_height) // 2
+                        
+                        self.log_callback(f"    📍 Pasting resized card at (px): ({paste_x}, {paste_y})")
+
+                        # Paste the resized card image onto the A4 page
+                        # Check if the resized_card has an alpha channel before pasting with mask
+                        if resized_card.mode == 'RGBA':
+                             a4_page.paste(resized_card, (paste_x, paste_y), resized_card)
+                        else:
+                             a4_page.paste(resized_card, (paste_x, paste_y))
+
+                    a4_images.append(a4_page)
+                    self.log_callback(f"  ✅ Finished creating A4 page {len(a4_images)}")
+
                 try:
-                    # Convert images to RGB mode before saving as PDF
-                    rgb_images = [img.convert('RGB') for img in generated_images]
-                    
-                    # Save the first image, then append the rest
-                    rgb_images[0].save(pdf_output_path, save_all=True, append_images=rgb_images[1:], format='PDF')
-                    self.log_callback(f"🎉 Successfully saved all ID cards to: {os.path.basename(pdf_output_path)}")
+                    if a4_images:
+                        # Convert A4 page images to RGB mode before saving as PDF
+                        rgb_a4_images = [img.convert('RGB') for img in a4_images]
+
+                        # Save the first A4 image, then append the rest
+                        rgb_a4_images[0].save(pdf_output_path, save_all=True, append_images=rgb_a4_images[1:], format='PDF')
+                        self.log_callback(f"🎉 Successfully saved A4 PDF to: {os.path.basename(pdf_output_path)}")
+                    else:
+                        self.log_callback("⚠️ No A4 pages were generated to save as PDF.")
+
                 except Exception as e:
                     self.log_callback(f"❌ Error saving PDF: {str(e)}")
                     messagebox.showerror("PDF Save Error", f"Error saving PDF: {str(e)}")
-            else:
-                self.log_callback("⚠️ No cards generated to save as PDF.")
+
+            # Log if PDF export was skipped because the option was not selected or no images were generated
+            elif not self.export_as_pdf_var.get():
+                 self.log_callback("⏭️ PDF export option not selected. Skipping PDF generation.")
+            elif not generated_images:
+                 self.log_callback("⚠️ No cards generated. Skipping PDF save.")
 
         except FileNotFoundError as e:
             self.log_callback(f"❌ File not found error: {str(e)}")
